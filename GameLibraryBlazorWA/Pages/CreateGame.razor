@@ -1,0 +1,100 @@
+﻿@page "/CreateGame"
+@inject NavigationManager navigationManager
+@inject HttpClient Http
+@inject InitialGameProfiler newGame
+<h3>Create Game</h3>
+
+@if (string.IsNullOrEmpty(errorString) == false)
+{
+    <h4>System Error</h4>
+    <p>@errorString</p>
+    <p>@model.SelectedGame</p>
+}
+else
+{
+    <EditForm Model="@model" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary Model="@model" />
+        <div class="form-group">
+            <label class="control-label">Low Interval</label>
+            <InputNumber @bind-Value="interval.LowInterval" class="form-control" />
+            <ValidationMessage For="@(()=>interval.LowInterval)" class="text-danger" />
+        </div>
+        <div class="form-group">
+            <label class="control-label">High Interval</label>
+            <InputNumber @bind-Value="interval.HighInterval" class="form-control" />
+            <ValidationMessage For="@(()=>interval.HighInterval)" class="text-danger" />
+        </div>
+        <div class="form-group">
+            <label class="control-label">GameToPlay</label>
+            <InputSelect @bind-Value="model.SelectedGame">
+                <option value="">Select a Game...</option>
+                <option value="Ishitori">Ishitori</option>
+                <option value="GuessTheNumber">Guess The Number</option>
+            </InputSelect>
+        </div>
+        <div class="form-group">
+            <input type="submit" value="Create Game" class="btn btn-primary" />
+        </div>
+    </EditForm>
+}
+    @code {
+
+        private CreateGameModel model = new CreateGameModel();
+        private GameIntervalModel interval = new GameIntervalModel();
+        private string errorString = "";
+
+        protected override void OnInitialized()
+        {
+            newGame.Reset();
+        }
+
+        private async void CreateGuessingGame()
+        {
+
+            try
+            {
+                var response = await Http.PostAsJsonAsync("api/NewGame", model);
+                var contents = await response.Content.ReadFromJsonAsync<GuessTheNumberGameModel>();
+                newGame.NumberGuessGame = contents;
+                navigationManager.NavigateTo("games/guessTheNumberGame");
+            }
+            catch (Exception ex)
+            {
+
+                errorString = ex.Message;
+            }
+        }
+        private async void CreateIshitoriGame()
+        {
+            try
+            {
+                var response = await Http.PostAsJsonAsync("api/NewGame", model);
+                var contents = await response.Content.ReadFromJsonAsync<IshitoriGameModel>();
+                newGame.IshitoriGame = contents;
+                navigationManager.NavigateTo("games/ishitoriGame");
+            }
+            catch (Exception ex)
+            {
+
+                errorString = ex.Message;
+            }
+        }
+        private async Task HandleValidSubmit()
+        {
+            errorString = "";
+            model.GameInterval[0] = interval.LowInterval;
+            model.GameInterval[1] = interval.HighInterval;
+            
+            if (model.SelectedGame == "Ishitori")
+            {
+                CreateIshitoriGame();
+            }
+            else if (model.SelectedGame == "GuessTheNumber")
+            {
+                
+                CreateGuessingGame();
+            }
+
+        }
+    }

@@ -1,0 +1,109 @@
+﻿@page "/Games/GuessTheNumberGame"
+@inject NavigationManager navigationManager
+@inject HttpClient Http
+@inject InitialGameProfiler newGame
+<h3>GuessTheNumberGame</h3>
+
+@if (newGame.IshitoriGame is null)
+{
+    <h4> You haven't created a game</h4>
+}
+else
+{
+    <h4>Current Game Status:</h4>
+
+    <table class="table">
+        <tbody>
+            <tr>
+                <td><strong>Tries Left</strong></td>
+                <td>@currentGame.AllowedTurns</td>
+
+            </tr>
+            <tr>
+                <td><strong>Interval Selected</strong></td>
+                <td>@currentGame.GuessingInterval[0]</td>
+                <td>@currentGame.GuessingInterval[1]</td>
+            </tr>
+        </tbody>
+    </table>
+    @if (invalidGuess)
+    {
+        <strong>Invalid Guess please try another number</strong>
+    }
+
+    @if (currentGame.AllowedTurns < 1 && currentGame.isAWin == false)
+    {
+        <strong>There are not more tries left sorry you've lost</strong>
+        <button class="btn btn-info" @onclick="BackToCreate">
+            Create another Game?
+        </button>
+    }
+    else if (currentGame.GuessResult == "lower")
+    {
+        <strong>The number is lower</strong>
+    }
+    else if (currentGame.GuessResult == "higher")
+    {
+        <strong>The number is higher</strong>
+    }
+    else if (currentGame.isAWin)
+    {
+        <strong>Victory </strong>
+        <button class="btn btn-info" @onclick="BackToCreate">
+            Create another Game?
+        </button>
+    }
+    @if (currentGame.AllowedTurns > 0)
+    {
+
+        <EditForm Model="currentGame" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary Model="@currentGame" />
+
+            <div class="form-group">
+                <label class="control-label">Submit Retrieval</label>
+                <InputNumber @bind-Value="@currentGame.PlayerGuess" />
+                <ValidationMessage For="@(() => currentGame.PlayerGuess)" class="text-danger" />
+            </div>
+
+            <div class="form-group">
+                <input type="submit" value="Send Retrieval" class="btn btn-primary" />
+            </div>
+
+        </EditForm>
+    }
+}
+    @code {
+
+private GuessTheNumberGameModel currentGame;
+    private string errorString;
+    private string guessMessage;
+    private bool invalidGuess;
+
+    protected override void OnInitialized()
+    {
+        currentGame = newGame.NumberGuessGame;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        invalidGuess = false;
+        if (currentGame.PlayerGuess > currentGame.GuessingInterval[1] || currentGame.PlayerGuess < currentGame.GuessingInterval[0])
+        {
+            invalidGuess = true;
+        }
+        else
+        {
+            var response = await Http.PostAsJsonAsync("api/GuessingResult", currentGame);
+            var contents = await response.Content.ReadFromJsonAsync<GuessTheNumberGameModel>();
+            currentGame = contents;
+        }
+
+
+    }
+    private void BackToCreate()
+    {
+        newGame.Reset();
+        navigationManager.NavigateTo("/CreateGame");
+    }
+    }

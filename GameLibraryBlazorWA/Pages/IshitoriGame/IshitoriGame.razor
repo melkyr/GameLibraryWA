@@ -1,0 +1,117 @@
+﻿@page "/Games/IshitoriGame"
+@inject NavigationManager navigationManager
+@inject HttpClient Http
+@inject InitialGameProfiler newGame
+<h3>IshitoriGame</h3>
+
+@if (newGame.IshitoriGame is null)
+{
+    <h4> You haven't created a game</h4>
+}
+else { 
+<h4>Current Game Status:</h4>
+<table class="table">
+    <tbody>
+        <tr>
+            <td><strong>Pieces Left</strong></td>
+            <td>@currentGame.PiecesLeft</td>
+        </tr>
+        <tr>
+            <td><strong>Intial Pieces</strong></td>
+            <td>@currentGame.InitialPieces</td>
+        </tr>
+        <tr>
+            <td><strong>Computer Retrieval</strong></td>
+            <td>@currentGame.CpRetrieve</td>
+        </tr>
+        <tr>
+            <td><strong>Game Finished</strong></td>
+            <td>@currentGame.isAWin</td>
+        </tr>
+        <tr>
+            <td><strong>The last time you retrieved</strong></td>
+            <td>@currentGame.PlayerPreviousRetrieve</td>
+        </tr>
+        <tr>
+            <td colspan="2">
+                @if (gameStarted == false)
+                {
+                    <button class="btn btn-outline-danger" @onclick="SetCpStarter">
+                        Do you want that CP Starts Retrieving?
+                    </button>
+                }
+            </td>
+        </tr>
+    </tbody>
+</table>
+@if (currentGame.PiecesLeft == 0 && currentGame.isAWin == false)
+{
+    <h4>You Lose</h4>
+    <button class="btn btn-info" @onclick="BackToCreate">
+        Create another Game?
+    </button>
+}
+else if (currentGame.isAWin)
+{
+    <h4>You Won</h4>
+    <button class="btn btn-info" @onclick="BackToCreate">
+        Create another Game?
+    </button>
+}
+else
+{
+    <EditForm Model="currentGame" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary Model="@currentGame" />
+
+        <div class="form-group">
+            <label class="control-label">Submit Retrieval</label>
+            <InputNumber @bind-Value="@currentGame.PlayerRetrieve" />
+            <ValidationMessage For="@(()=>currentGame.PlayerRetrieve)" class="text-danger" />
+        </div>
+
+        <div class="form-group">
+            <input type="submit" value="Send Retrieval" class="btn btn-primary" />
+        </div>
+
+    </EditForm>
+}
+}
+
+@code {
+    private IshitoriGameModel currentGame;
+    private bool gameStarted = false;
+    protected override void OnInitialized()
+    {
+        currentGame = newGame.IshitoriGame;
+
+    }
+    private async Task SetCpStarter()
+    {
+        currentGame.IsCpTurn = true;
+        gameStarted = true;
+        await HandleValidSubmit();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (currentGame.PiecesLeft - currentGame.PlayerRetrieve < 0)
+        {
+            currentGame.PlayerRetrieve = currentGame.PiecesLeft;
+        }
+
+        currentGame.IsCpTurn = false;
+        var response = await Http.PostAsJsonAsync("api/IshitoriNextMove", currentGame);
+        var contents = await response.Content.ReadFromJsonAsync<IshitoriGameModel>();
+        currentGame = contents;
+        gameStarted = true;
+
+    }
+
+    private void BackToCreate()
+    {
+        newGame.Reset();
+        navigationManager.NavigateTo("/CreateGame");
+    }
+
+}
